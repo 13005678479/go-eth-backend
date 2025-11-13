@@ -1,0 +1,27 @@
+{
+  "name": "go-eth-backend",
+  "version": "1.0.0",
+  "description": "一个用 Go 语言编写的以太坊后端服务，提供区块链数据查询和基础功能。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/13005678479/go-eth-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/13005678479/go-eth-backend/issues"
+  },
+  "homepage": "https://github.com/13005678479/go-eth-backend#readme",
+  "dependencies": {
+    "solc": "^0.8.30"
+  }
+}

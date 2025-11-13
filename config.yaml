@@ -1,0 +1,39 @@
+# 以太坊后端配置
+
+ethereum:
+  # 以太坊网络配置
+  networks:
+    mainnet:
+      rpc_url: "https://mainnet.infura.io/v3/YOUR-PROJECT-ID"
+      chain_id: 1
+    sepolia:
+      rpc_url: "https://sepolia.infura.io/v3/ea33fc8cbc4545d9ac08fba394c5046b"
+      chain_id: 11155111
+
+# 服务器配置
+server:
+  port: 8080
+  host: "localhost"
+  read_timeout: 30s
+  write_timeout: 30s
+
+# 日志配置
+logging:
+  level: "info"
+  format: "json"
+  file_path: "./logs/app.log"
+
+# 数据库配置 (可选)
+database:
+  enabled: false
+  host: "localhost"
+  port: 5432
+  name: "eth_backend"
+  user: "user"
+  password: "password"
+
+# 缓存配置 (可选)
+cache:
+  enabled: false
+  redis_url: "redis://localhost:6379"
+  ttl: 3600
