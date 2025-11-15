@@ -52,10 +52,6 @@ func main() {
 	// 从配置文件获取私钥
 	privateKeyHex := config.GetTestPrivateKey()
 	
-	fmt.Printf("🔐 已加载测试私钥，账户地址: %s
-", getAddressFromPrivateKey(privateKeyHex))
-	fmt.Println()
-
 	// 解析私钥
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {
@@ -70,6 +66,7 @@ func main() {
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	fmt.Printf("🔐 已加载测试私钥，账户地址: %s\n", fromAddress.Hex())
 	fmt.Printf("📧 发送方地址: %s\n", fromAddress.Hex())
 
 	// 接收方地址（示例地址）
@@ -192,43 +189,4 @@ func main() {
 	fmt.Println()
 
 	fmt.Println("=== 交易发送示例完成 ===")
-}
-
-// 显示教程信息
-func showTutorial(client *ethclient.Client) {
-	fmt.Println("📚 使用教程:")
-	fmt.Println("1. 获取Sepolia测试ETH:")
-	fmt.Println("   - 访问: https://sepoliafaucet.com/")
-	fmt.Println("   - 输入您的以太坊地址获取测试ETH")
-	fmt.Println()
-
-	fmt.Println("2. 配置私钥:")
-	fmt.Println("   - 编辑 simple_transaction.go 文件")
-	fmt.Println("   - 将 YOUR_PRIVATE_KEY_HERE 替换为您的测试网络私钥")
-	fmt.Println("   - 注意: 不要使用主网私钥!")
-	fmt.Println()
-
-	fmt.Println("3. 生成测试账户（可选）:")
-	fmt.Println("   可以使用以下命令生成测试账户:")
-	fmt.Println("   $ openssl ecparam -name secp256k1 -genkey -noout | openssl ec -text -noout")
-	fmt.Println()
-
-	fmt.Println("4. 运行程序:")
-	fmt.Println("   $ go run cmd/simple_transaction.go")
-	fmt.Println()
-
-	// 显示示例账户信息（仅用于演示）
-	fmt.Println("💡 示例账户信息（仅用于演示）:")
-	fmt.Println("   地址: 0x742d35Cc6634C0532925a3b8Ffb8a2B15a3F2F20")
-	fmt.Println("   余额: 可以从水龙头获取测试ETH")
-	fmt.Println()
-
-	// 检查网络连接
-	fmt.Println("🌐 网络连接状态:")
-	blockNumber, err := client.BlockNumber(context.Background())
-	if err != nil {
-		fmt.Println("❌ 网络连接失败")
-	} else {
-		fmt.Printf("✅ 网络连接正常，最新区块: %d\n", blockNumber)
-	}
 }
