@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// Block 区块信息结构体
-type Block struct {
+// JSONBlock 用于JSON序列化的区块信息结构体
+type JSONBlock struct {
 	Number          uint64        `json:"number"`
 	Hash            string        `json:"hash"`
 	Timestamp       time.Time     `json:"timestamp"`
@@ -24,14 +23,14 @@ type Block struct {
 	Size            uint64        `json:"size"`
 }
 
-// ParseBlock 从原生区块类型解析为自定义区块结构
-func ParseBlock(block *types.Block) *Block {
+// ParseBlock 从原生区块类型解析为JSONBlock结构
+func ParseBlock(block *types.Block) *JSONBlock {
 	transactions := make([]string, len(block.Transactions()))
 	for i, tx := range block.Transactions() {
 		transactions[i] = tx.Hash().Hex()
 	}
 
-	return &Block{
+	return &JSONBlock{
 		Number:          block.Number().Uint64(),
 		Hash:            block.Hash().Hex(),
 		Timestamp:       time.Unix(int64(block.Time()), 0),

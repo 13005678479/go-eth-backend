@@ -6,132 +6,198 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// Client 以太坊客户端包装器
+// Block 区块信息结构
+type Block struct {
+	Number           uint64
+	Hash             string
+	Timestamp        time.Time
+	TransactionCount int
+	GasUsed          uint64
+	Miner            string
+	Size             uint64
+	Difficulty       *big.Int
+	ExtraData        []byte
+}
+
+// BlockHeader 区块头信息
+type BlockHeader struct {
+	ParentHash string
+	GasLimit   uint64
+	Difficulty *big.Int
+}
+
+// Client 以太坊客户端封装
 type Client struct {
-	client *ethclient.Client
-	ctx    context.Context
+	Client *ethclient.Client
 }
 
 // NewClient 创建新的以太坊客户端
-func NewClient(network, rpcURL string) (*Client, error) {
-	// 如果没有提供 RPC URL，使用默认的
-	if rpcURL == "" {
-		rpcURL = getDefaultRPCURL(network)
-	}
-
-	ctx := context.Background()
-	
-	client, err := ethclient.DialContext(ctx, rpcURL)
+func NewClient(rpcURL string) (*Client, error) {
+	client, err := ethclient.Dial(rpcURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Ethereum node: %v", err)
+		return nil, fmt.Errorf("连接以太坊节点失败: %v", err)
 	}
 
-	return &Client{
-		client: client,
-		ctx:    ctx,
+	return &Client{Client: client}, nil
+}
+
+// GetRawClient 获取原始以太坊客户端
+func (c *Client) GetRawClient() *ethclient.Client {
+	return c.Client
+}
+
+// Close 关闭客户端连接
+func (c *Client) Close() {
+	if c.Client != nil {
+		c.Client.Close()
+	}
+}
+
+// GetLatestBlock 获取最新区块
+func (c *Client) GetLatestBlock() (*Block, error) {
+	header, err := c.Client.HeaderByNumber(context.Background(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("获取最新区块头失败: %v", err)
+	}
+
+	block, err := c.Client.BlockByHash(context.Background(), header.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("获取区块详情失败: %v", err)
+	}
+
+	return &Block{
+		Number:           block.Number().Uint64(),
+		Hash:             block.Hash().Hex(),
+		Timestamp:        time.Unix(int64(block.Time()), 0),
+		TransactionCount: len(block.Transactions()),
+		GasUsed:          block.GasUsed(),
+		Miner:            block.Coinbase().Hex(),
+		Size:             block.Size(),
+		Difficulty:       block.Difficulty(),
+		ExtraData:        block.Extra(),
 	}, nil
 }
 
-// GetLatestBlockNumber 获取最新的区块号
-func (c *Client) GetLatestBlockNumber() (uint64, error) {
-	header, err := c.client.HeaderByNumber(c.ctx, nil)
+// GetBlockByNumber 根据区块号获取区块
+func (c *Client) GetBlockByNumber(number uint64) (*Block, error) {
+	block, err := c.Client.BlockByNumber(context.Background(), big.NewInt(int64(number)))
 	if err != nil {
-		return 0, fmt.Errorf("failed to get latest block: %v", err)
+		return nil, fmt.Errorf("获取区块 %d 失败: %v", number, err)
 	}
 
-	return header.Number.Uint64(), nil
+	return &Block{
+		Number:           block.Number().Uint64(),
+		Hash:             block.Hash().Hex(),
+		Timestamp:        time.Unix(int64(block.Time()), 0),
+		TransactionCount: len(block.Transactions()),
+		GasUsed:          block.GasUsed(),
+		Miner:            block.Coinbase().Hex(),
+		Size:             block.Size(),
+		Difficulty:       block.Difficulty(),
+		ExtraData:        block.Extra(),
+	}, nil
 }
 
-// GetBlockByNumber 根据区块号获取区块信息
-func (c *Client) GetBlockByNumber(blockNumber uint64) (*Block, error) {
-	number := big.NewInt(int64(blockNumber))
-	block, err := c.client.BlockByNumber(c.ctx, number)
+// GetBlockHeaderByNumber 根据区块号获取区块头
+func (c *Client) GetBlockHeaderByNumber(number uint64) (*BlockHeader, error) {
+	header, err := c.Client.HeaderByNumber(context.Background(), big.NewInt(int64(number)))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get block %d: %v", blockNumber, err)
-	}
-
-	return ParseBlock(block), nil
-}
-
-// GetBlockByHash 根据区块哈希获取区块信息
-func (c *Client) GetBlockByHash(blockHash string) (*Block, error) {
-	hash := common.HexToHash(blockHash)
-	block, err := c.client.BlockByHash(c.ctx, hash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get block by hash %s: %v", blockHash, err)
-	}
-
-	return ParseBlock(block), nil
-}
-
-// GetBlockHeaderByNumber 根据区块号获取区块头信息
-func (c *Client) GetBlockHeaderByNumber(blockNumber uint64) (*BlockHeader, error) {
-	number := big.NewInt(int64(blockNumber))
-	header, err := c.client.HeaderByNumber(c.ctx, number)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get block header %d: %v", blockNumber, err)
+		return nil, fmt.Errorf("获取区块头 %d 失败: %v", number, err)
 	}
 
 	return &BlockHeader{
-		Number:     header.Number.Uint64(),
-		Hash:       header.Hash().Hex(),
-		Timestamp:  time.Unix(int64(header.Time), 0),
 		ParentHash: header.ParentHash.Hex(),
 		GasLimit:   header.GasLimit,
-		GasUsed:    header.GasUsed,
-		Miner:      header.Coinbase.Hex(),
+		Difficulty: header.Difficulty,
 	}, nil
 }
 
-// GetLatestBlock 获取最新区块信息
-func (c *Client) GetLatestBlock() (*Block, error) {
-	header, err := c.client.HeaderByNumber(c.ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get latest block header: %v", err)
-	}
-
-	return c.GetBlockByNumber(header.Number.Uint64())
-}
-
 // GetBlockTransactionCount 获取区块中的交易数量
-func (c *Client) GetBlockTransactionCount(blockNumber uint64) (int, error) {
-	number := big.NewInt(int64(blockNumber))
-	txCount, err := c.client.TransactionCount(c.ctx, number)
+func (c *Client) GetBlockTransactionCount(number uint64) (int, error) {
+	block, err := c.Client.BlockByNumber(context.Background(), big.NewInt(int64(number)))
 	if err != nil {
-		return 0, fmt.Errorf("failed to get transaction count for block %d: %v", blockNumber, err)
+		return 0, fmt.Errorf("获取区块 %d 失败: %v", number, err)
 	}
-	return int(txCount), nil
+
+	return len(block.Transactions()), nil
 }
 
-// GetBalance 获取地址余额
+// GetBlockByHash 根据区块哈希获取区块
+func (c *Client) GetBlockByHash(hash string) (*Block, error) {
+	blockHash := common.HexToHash(hash)
+	block, err := c.Client.BlockByHash(context.Background(), blockHash)
+	if err != nil {
+		return nil, fmt.Errorf("获取区块 %s 失败: %v", hash, err)
+	}
+
+	return &Block{
+		Number:           block.Number().Uint64(),
+		Hash:             block.Hash().Hex(),
+		Timestamp:        time.Unix(int64(block.Time()), 0),
+		TransactionCount: len(block.Transactions()),
+		GasUsed:          block.GasUsed(),
+		Miner:            block.Coinbase().Hex(),
+		Size:             block.Size(),
+		Difficulty:       block.Difficulty(),
+		ExtraData:        block.Extra(),
+	}, nil
+}
+
+// GetTransactionByHash 根据交易哈希获取交易信息
+func (c *Client) GetTransactionByHash(hash string) (*types.Transaction, bool, error) {
+	txHash := common.HexToHash(hash)
+	tx, isPending, err := c.Client.TransactionByHash(context.Background(), txHash)
+	if err != nil {
+		return nil, false, fmt.Errorf("获取交易 %s 失败: %v", hash, err)
+	}
+
+	return tx, isPending, nil
+}
+
+// GetTransactionReceipt 获取交易收据
+func (c *Client) GetTransactionReceipt(hash string) (*types.Receipt, error) {
+	txHash := common.HexToHash(hash)
+	receipt, err := c.Client.TransactionReceipt(context.Background(), txHash)
+	if err != nil {
+		return nil, fmt.Errorf("获取交易收据 %s 失败: %v", hash, err)
+	}
+
+	return receipt, nil
+}
+
+// GetBalance 获取账户余额
 func (c *Client) GetBalance(address string) (*big.Int, error) {
-	return c.client.BalanceAt(c.ctx, parseAddress(address), nil)
-}
-
-// getDefaultRPCURL 根据网络获取默认的 RPC URL
-func getDefaultRPCURL(network string) string {
-	switch network {
-	case "mainnet":
-		return "https://mainnet.infura.io/v3/YOUR-PROJECT-ID"
-	case "sepolia":
-		return "https://sepolia.infura.io/v3/ea33fc8cbc4545d9ac08fba394c5046b"
-	case "goerli":
-		return "https://goerli.infura.io/v3/YOUR-PROJECT-ID"
-	case "ropsten":
-		return "https://ropsten.infura.io/v3/YOUR-PROJECT-ID"
-	case "rinkeby":
-		return "https://rinkeby.infura.io/v3/YOUR-PROJECT-ID"
-	default:
-		// 默认使用 Sepolia 测试网络
-		return "https://sepolia.infura.io/v3/ea33fc8cbc4545d9ac08fba394c5046b"
+	account := common.HexToAddress(address)
+	balance, err := c.Client.BalanceAt(context.Background(), account, nil)
+	if err != nil {
+		return nil, fmt.Errorf("获取账户余额失败: %v", err)
 	}
+
+	return balance, nil
 }
 
-// parseAddress 解析以太坊地址
-func parseAddress(address string) string {
-	// 这里可以添加地址验证逻辑
-	return address
+// GetNonce 获取账户nonce
+func (c *Client) GetNonce(address string) (uint64, error) {
+	account := common.HexToAddress(address)
+	nonce, err := c.Client.NonceAt(context.Background(), account, nil)
+	if err != nil {
+		return 0, fmt.Errorf("获取账户nonce失败: %v", err)
+	}
+
+	return nonce, nil
+}
+
+// GetGasPrice 获取当前gas价格
+func (c *Client) GetGasPrice() (*big.Int, error) {
+	gasPrice, err := c.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("获取gas价格失败: %v", err)
+	}
+
+	return gasPrice, nil
 }
